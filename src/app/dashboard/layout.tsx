@@ -17,9 +17,12 @@ export default async function DashboardLayout({
           Cinematic Studio
         </Link>
         <div className="flex items-center gap-4">
-          <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-sm text-[var(--color-muted)]">
+          <Link
+            href="/dashboard/billing"
+            className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-sm text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-text)]"
+          >
             {user?.creditBalance ?? 0} credits
-          </span>
+          </Link>
           <UserButton afterSignOutUrl="/" />
         </div>
       </header>

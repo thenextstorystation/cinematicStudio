@@ -81,6 +81,9 @@ src/
 - ✅ **Edit & handoff** (§12.5/§17.1): auto-assembled sequence from rendered
   takes, budget/runtime summary, shot-list table, and downloadable exports —
   FCPXML, OTIO, EDL (CMX3600), shot-list CSV, and full project JSON
+- ✅ **Billing** (§24.1): credit-pack purchase via Stripe Checkout (inline
+  pricing, JIT customer), success/cancel handling, and an in-app credit ledger;
+  the webhook credits the wallet idempotently on payment
 
 ## Roadmap (per PRD §11)
 

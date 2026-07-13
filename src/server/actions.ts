@@ -13,6 +13,7 @@ import {
 } from "./screenplay";
 import { generateScreenplay, breakdownScreenplay } from "@/lib/ai/cowriter";
 import { generateShot } from "./generation";
+import { createCreditCheckout } from "@/lib/billing/checkout";
 import type { ShotDesign } from "@/db/schema";
 import type { TargetModel } from "@/lib/compiler";
 
@@ -154,4 +155,20 @@ export async function generateShotAction(input: {
   revalidatePath(`/dashboard/projects/${parsed.projectId}/design`);
   revalidatePath("/dashboard");
   return result;
+}
+
+// --- Billing (credit top-ups, Module 24) -----------------------------------
+
+export async function buyCreditsAction(packKey: string): Promise<string> {
+  const user = await requireUser();
+  z.string().min(1).parse(packKey);
+  return createCreditCheckout(
+    {
+      id: user.id,
+      email: user.email,
+      stripeCustomerId: user.stripeCustomerId,
+      displayName: user.displayName,
+    },
+    packKey,
+  );
 }
