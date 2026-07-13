@@ -78,6 +78,9 @@ src/
 - ✅ **Generation lifecycle** (§6.1/§6.7/§24.2): design → compile → spend credits
   → immutable Take → dispatch/poll adapter → render, with auto-refund on failure
   (driven by a mock adapter until a provider key is set)
+- ✅ **Edit & handoff** (§12.5/§17.1): auto-assembled sequence from rendered
+  takes, budget/runtime summary, shot-list table, and downloadable exports —
+  FCPXML, OTIO, EDL (CMX3600), shot-list CSV, and full project JSON
 
 ## Roadmap (per PRD §11)
 
