@@ -14,6 +14,7 @@ import {
 import { generateScreenplay, breakdownScreenplay } from "@/lib/ai/cowriter";
 import { generateShot } from "./generation";
 import { createCreditCheckout } from "@/lib/billing/checkout";
+import { askAssistant, type ChatTurn } from "./assistant";
 import type { ShotDesign } from "@/db/schema";
 import type { TargetModel } from "@/lib/compiler";
 
@@ -170,5 +171,36 @@ export async function buyCreditsAction(packKey: string): Promise<string> {
       displayName: user.displayName,
     },
     packKey,
+  );
+}
+
+// --- Director's Assistant (Module 11.1, read-only) -------------------------
+
+const askSchema = z.object({
+  projectId: z.string().uuid(),
+  question: z.string().min(1).max(2000),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(8000),
+      }),
+    )
+    .max(20)
+    .optional(),
+});
+
+export async function askAssistantAction(input: {
+  projectId: string;
+  question: string;
+  history?: ChatTurn[];
+}): Promise<string> {
+  const user = await requireUser();
+  const parsed = askSchema.parse(input);
+  return askAssistant(
+    user.id,
+    parsed.projectId,
+    parsed.question,
+    parsed.history ?? [],
   );
 }

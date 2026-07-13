@@ -87,6 +87,9 @@ src/
 - ✅ **Continuity engine** (§6.5/§2.2): post-render identity consistency score on
   every take (pluggable scorer — heuristic default, swap in embedding/VLM), plus
   a project audit that flags shots below threshold (<70) with one-click re-roll
+- ✅ **Director's Assistant** (§11.1): read-only project-aware chat grounded in a
+  live digest of the whole graph (scenes, shots, budget, continuity);
+  injection-hardened (§11.6) — project content is treated as data, not commands
 
 ## Roadmap (per PRD §11)
 
