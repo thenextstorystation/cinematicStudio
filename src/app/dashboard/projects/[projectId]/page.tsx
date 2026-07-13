@@ -1,5 +1,7 @@
 import { getProjectScenes, getProjectEntities } from "@/server/projects";
 import { AddEntity } from "@/components/AddEntity";
+import { CoWriter } from "@/components/CoWriter";
+import { BreakdownButton } from "@/components/BreakdownButton";
 
 /** Script view — the default projection of the project graph. */
 export default async function ScriptView({
@@ -16,6 +18,7 @@ export default async function ScriptView({
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
       <section className="space-y-4">
+        <CoWriter projectId={projectId} />
         <h2 className="text-sm font-medium uppercase tracking-wide text-[var(--color-muted)]">
           Screenplay
         </h2>
@@ -38,6 +41,7 @@ export default async function ScriptView({
         <h2 className="text-sm font-medium uppercase tracking-wide text-[var(--color-muted)]">
           Entities
         </h2>
+        <BreakdownButton projectId={projectId} />
         <AddEntity projectId={projectId} />
         {entities.length === 0 ? (
           <p className="text-sm text-[var(--color-muted)]">

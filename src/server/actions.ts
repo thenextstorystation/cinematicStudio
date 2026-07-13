@@ -6,6 +6,12 @@ import { z } from "zod";
 import { requireUser } from "./auth";
 import { createProject } from "./projects";
 import { createShot, updateShotDesign, createEntity } from "./shots";
+import {
+  replaceScreenplay,
+  applyBreakdown,
+  getScriptText,
+} from "./screenplay";
+import { generateScreenplay, breakdownScreenplay } from "@/lib/ai/cowriter";
 import type { ShotDesign } from "@/db/schema";
 
 const createProjectSchema = z.object({
@@ -80,4 +86,43 @@ export async function createEntityAction(input: {
   );
   revalidatePath(`/dashboard/projects/${parsed.projectId}`);
   revalidatePath(`/dashboard/projects/${parsed.projectId}/design`);
+}
+
+// --- AI co-writer + auto-breakdown (Module 1) ------------------------------
+
+const cowriteSchema = z.object({
+  projectId: z.string().uuid(),
+  idea: z.string().min(3).max(2000),
+  format: z.string().max(60).optional(),
+  sceneCount: z.number().int().min(1).max(9).optional(),
+});
+
+export async function cowriteScriptAction(input: {
+  projectId: string;
+  idea: string;
+  format?: string;
+  sceneCount?: number;
+}) {
+  const user = await requireUser();
+  const parsed = cowriteSchema.parse(input);
+  const screenplay = await generateScreenplay(parsed.idea, {
+    format: parsed.format,
+    sceneCount: parsed.sceneCount,
+  });
+  await replaceScreenplay(user.id, parsed.projectId, screenplay);
+  revalidatePath(`/dashboard/projects/${parsed.projectId}`);
+}
+
+export async function breakdownScriptAction(projectId: string) {
+  const user = await requireUser();
+  z.string().uuid().parse(projectId);
+  const scriptText = await getScriptText(projectId);
+  if (!scriptText.trim()) {
+    throw new Error("There's no script to break down yet.");
+  }
+  const breakdown = await breakdownScreenplay(scriptText);
+  const result = await applyBreakdown(user.id, projectId, breakdown);
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath(`/dashboard/projects/${projectId}/design`);
+  return result;
 }
