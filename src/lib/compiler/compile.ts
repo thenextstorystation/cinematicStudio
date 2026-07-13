@@ -14,8 +14,8 @@ import {
   SHOT_SIZES,
   lensPhrase,
   phraseFor,
-} from "./vocab";
-import { render } from "./grammars";
+} from "./vocab.ts";
+import { render } from "./grammars.ts";
 
 /**
  * The prompt compiler (PRD §6.2). Pure and isomorphic so the Director Layer can

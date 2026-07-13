@@ -26,6 +26,18 @@ npm run db:migrate           # apply the schema to your Neon database
 npm run dev                  # http://localhost:3000
 ```
 
+### Checks
+
+```bash
+npm run typecheck   # tsc --noEmit
+npm test            # unit tests for the pure logic (compiler, cost, exports, continuity)
+npm run build       # production build
+```
+
+CI (`.github/workflows/ci.yml`) runs typecheck, tests, and a build on every push
+and PR. The unit tests run on Node's built-in test runner with no extra
+dependencies (type-stripped `.mts` files under `tests/`).
+
 ### Required services
 
 1. **Neon** — create a project, copy the pooled connection string into `DATABASE_URL`.
