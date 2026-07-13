@@ -102,6 +102,8 @@ src/
 - ✅ **Director's Assistant** (§11.1): read-only project-aware chat grounded in a
   live digest of the whole graph (scenes, shots, budget, continuity);
   injection-hardened (§11.6) — project content is treated as data, not commands
+- ✅ **Queue** (§22.1): cross-project generation-job panel with status, model,
+  tier, cost, consistency score, and thumbnails
 
 ## Roadmap (per PRD §11)
 
