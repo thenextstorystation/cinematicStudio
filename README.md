@@ -84,6 +84,9 @@ src/
 - ✅ **Billing** (§24.1): credit-pack purchase via Stripe Checkout (inline
   pricing, JIT customer), success/cancel handling, and an in-app credit ledger;
   the webhook credits the wallet idempotently on payment
+- ✅ **Continuity engine** (§6.5/§2.2): post-render identity consistency score on
+  every take (pluggable scorer — heuristic default, swap in embedding/VLM), plus
+  a project audit that flags shots below threshold (<70) with one-click re-roll
 
 ## Roadmap (per PRD §11)
 

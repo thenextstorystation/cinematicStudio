@@ -16,6 +16,7 @@ import { compile, type CompilerEntity, type TargetModel } from "@/lib/compiler";
 import { estimateShotCredits } from "@/lib/cost";
 import { getAdapter } from "@/lib/models/registry";
 import { spendCredits, refundCredits, InsufficientCreditsError } from "@/lib/billing/credits";
+import { continuityScorer } from "@/lib/continuity/scorer";
 
 /** The default generation target until a real provider key is configured. */
 const GENERATION_MODEL = "mock:preview";
@@ -28,6 +29,7 @@ type GenerateResult =
       url: string;
       creditCost: number;
       isDraft: boolean;
+      consistencyScore: number;
     }
   | {
       ok: false;
@@ -200,9 +202,22 @@ export async function generateShot(
       })
       .returning({ id: mediaAssets.id });
 
+    // Detect stage: post-render consistency score (PRD §6.5 / §2.2).
+    const continuity = continuityScorer.score({
+      compiledText: result.text,
+      identityRefCount: result.ir.references.filter((r) => r.role === "identity")
+        .length,
+      seed: status.seed,
+    });
+
     await db
       .update(takes)
-      .set({ state: "succeeded", mediaAssetId: asset.id, seed: status.seed })
+      .set({
+        state: "succeeded",
+        mediaAssetId: asset.id,
+        seed: status.seed,
+        consistencyScore: continuity.identity,
+      })
       .where(eq(takes.id, take.id));
 
     if (!input.isDraft) {
@@ -219,6 +234,7 @@ export async function generateShot(
       url: status.assetUrl,
       creditCost,
       isDraft: input.isDraft,
+      consistencyScore: continuity.identity,
     };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Generation failed." };

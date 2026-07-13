@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/server/auth";
 import { getSequence, getShotList } from "@/server/edit";
+import { auditProject } from "@/server/continuity";
+import { ReRollButton } from "@/components/ReRollButton";
 
 /** Edit view — assemble the sequence, review the shot list, export handoffs (Module 12). */
 export default async function EditView({
@@ -12,9 +14,10 @@ export default async function EditView({
   const user = await getCurrentUser();
   if (!user) notFound();
 
-  const [{ clips, aspectRatio }, shotList] = await Promise.all([
+  const [{ clips, aspectRatio }, shotList, audit] = await Promise.all([
     getSequence(user.id, projectId),
     getShotList(user.id, projectId),
+    auditProject(user.id, projectId),
   ]);
 
   const totalDuration = clips.reduce((a, c) => a + c.durationSec, 0);
@@ -78,6 +81,57 @@ export default async function EditView({
                 </p>
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      {/* Continuity audit (§6.5 Detect / §16.4) */}
+      <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-[var(--color-muted)]">
+            Continuity audit
+          </h2>
+          <div className="flex items-center gap-3 text-xs text-[var(--color-muted)]">
+            <span>
+              Identity median:{" "}
+              {audit.medianIdentity != null ? (
+                <ScoreChip score={audit.medianIdentity} />
+              ) : (
+                "—"
+              )}
+            </span>
+            <span>
+              {audit.flaggedCount} flagged · {audit.scoredCount} scored
+            </span>
+          </div>
+        </div>
+        {audit.scoredCount === 0 ? (
+          <p className="text-sm text-[var(--color-muted)]">
+            Nothing to audit yet — render some shots and their identity
+            consistency scores appear here (guidance, never a guarantee).
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {audit.shots
+              .filter((s) => s.score != null)
+              .map((s) => (
+                <div
+                  key={s.shotId}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-sm ${
+                    s.flagged
+                      ? "border-red-500/40 bg-red-500/5"
+                      : "border-[var(--color-border)]"
+                  }`}
+                >
+                  <span className="font-mono text-xs text-[var(--color-muted)]">
+                    S{s.scene}.{s.shot}
+                  </span>
+                  <ScoreChip score={s.score!} />
+                  {s.flagged && (
+                    <ReRollButton projectId={projectId} shotId={s.shotId} />
+                  )}
+                </div>
+              ))}
           </div>
         )}
       </section>
@@ -162,5 +216,19 @@ function Stat({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-[var(--color-muted)]">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
     </div>
+  );
+}
+
+function ScoreChip({ score }: { score: number }) {
+  const color =
+    score >= 85
+      ? "bg-emerald-500/20 text-emerald-300"
+      : score >= 70
+        ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)]"
+        : "bg-red-500/20 text-red-300";
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${color}`}>
+      {score}
+    </span>
   );
 }
