@@ -1,4 +1,5 @@
 import { getProjectScenes, getProjectEntities } from "@/server/projects";
+import { AddEntity } from "@/components/AddEntity";
 
 /** Script view — the default projection of the project graph. */
 export default async function ScriptView({
@@ -37,6 +38,7 @@ export default async function ScriptView({
         <h2 className="text-sm font-medium uppercase tracking-wide text-[var(--color-muted)]">
           Entities
         </h2>
+        <AddEntity projectId={projectId} />
         {entities.length === 0 ? (
           <p className="text-sm text-[var(--color-muted)]">
             No entities yet. The auto-breakdown will extract characters,
