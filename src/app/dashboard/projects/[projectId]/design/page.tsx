@@ -6,6 +6,7 @@ import {
   getProjectEntities,
   getSceneShots,
 } from "@/server/projects";
+import { getShotTakes } from "@/server/generation";
 import { DirectorLayer } from "@/components/design/DirectorLayer";
 
 /** Design view — the Director Layer (PRD §7.2). */
@@ -27,12 +28,21 @@ export default async function DesignView({
   ]);
 
   const scenesWithShots = await Promise.all(
-    scenes.map(async (scene) => ({
-      id: scene.id,
-      heading: scene.heading,
-      index: scene.index,
-      shots: await getSceneShots(scene.id),
-    })),
+    scenes.map(async (scene) => {
+      const sceneShots = await getSceneShots(scene.id);
+      const shotsWithTakes = await Promise.all(
+        sceneShots.map(async (shot) => ({
+          ...shot,
+          takes: await getShotTakes(shot.id),
+        })),
+      );
+      return {
+        id: scene.id,
+        heading: scene.heading,
+        index: scene.index,
+        shots: shotsWithTakes,
+      };
+    }),
   );
 
   return (
@@ -48,6 +58,13 @@ export default async function DesignView({
           index: shot.index,
           status: shot.status,
           design: shot.design ?? {},
+          takes: shot.takes.map((t) => ({
+            id: t.id,
+            state: t.state,
+            isDraft: t.isDraft,
+            url: t.url,
+            creditCost: t.creditCost,
+          })),
         })),
       }))}
       entities={entities.map((e) => ({

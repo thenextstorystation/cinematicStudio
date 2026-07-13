@@ -13,7 +13,11 @@ import {
   type TargetModel,
 } from "@/lib/compiler";
 import { estimateShotCredits } from "@/lib/cost";
-import { createShotAction, saveShotDesignAction } from "@/server/actions";
+import {
+  createShotAction,
+  saveShotDesignAction,
+  generateShotAction,
+} from "@/server/actions";
 
 type Entity = {
   id: string;
@@ -22,11 +26,20 @@ type Entity = {
   descriptors?: Record<string, unknown> | null;
 };
 
+type Take = {
+  id: string;
+  state: string;
+  isDraft: boolean;
+  url: string | null;
+  creditCost: number;
+};
+
 type Shot = {
   id: string;
   index: number;
   status: string;
   design: ShotDesign;
+  takes: Take[];
 };
 
 type Scene = {
@@ -174,6 +187,9 @@ function ShotEditor({
   );
   const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
+  const [genPending, startGen] = useTransition();
+  const [genError, setGenError] = useState<string | null>(null);
+  const [genNote, setGenNote] = useState<string | null>(null);
 
   const includedEntities: CompilerEntity[] = useMemo(
     () =>
@@ -210,6 +226,10 @@ function ShotEditor({
     referenceCount: result.ir.references.length,
     isDraft: false,
   });
+
+  const latestRender = shot.takes.find(
+    (t) => t.state === "succeeded" && t.url,
+  );
 
   function patch(next: Partial<ShotDesign>) {
     setDesign((d) => ({ ...d, ...next }));
@@ -254,15 +274,64 @@ function ShotEditor({
     });
   }
 
+  function generate(isDraft: boolean) {
+    setGenError(null);
+    setGenNote(null);
+    startGen(async () => {
+      // Persist the current design first so the server compiles what you see.
+      await saveShotDesignAction({
+        projectId,
+        shotId: shot.id,
+        design,
+        compiled: {
+          text: result.text,
+          targetModel: result.targetModel,
+          ir: result.ir as unknown as Record<string, unknown>,
+        },
+      });
+      const res = await generateShotAction({
+        projectId,
+        shotId: shot.id,
+        isDraft,
+        targetModel: target,
+      });
+      if (res.ok) {
+        setGenNote(
+          `${isDraft ? "Draft" : "Final"} rendered · ${res.creditCost} cr spent.`,
+        );
+      } else {
+        setGenError(
+          res.refunded
+            ? `${res.error} (${res.refunded} cr refunded.)`
+            : res.error,
+        );
+      }
+    });
+  }
+
   const selectedMoves = new Set((design.movements ?? []).map((m) => m.name));
 
   return (
     <>
       {/* Center stage: Frame controls */}
       <section className="space-y-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-        {/* Previz stage */}
-        <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-[var(--color-surface-2)] text-sm text-[var(--color-muted)]">
-          Previz — gray mannequin stage (design before you render)
+        {/* Previz stage — shows the latest rendered take, or a gray mannequin. */}
+        <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-[var(--color-surface-2)] text-sm text-[var(--color-muted)]">
+          {latestRender ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={latestRender.url ?? ""}
+              alt="Latest render"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            "Previz — gray mannequin stage (design before you render)"
+          )}
+          {genPending && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-bg)]/70 text-sm">
+              Generating…
+            </div>
+          )}
         </div>
 
         <Ladder
@@ -458,19 +527,59 @@ function ShotEditor({
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => generate(true)}
+            disabled={genPending}
             title="Draft render auto-downshifts resolution/duration"
-            className="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm transition hover:border-[var(--color-accent)]"
+            className="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm transition hover:border-[var(--color-accent)] disabled:opacity-50"
           >
             Draft · {draftCost} cr
           </button>
-          <button className="flex-1 rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-black transition hover:opacity-90">
+          <button
+            onClick={() => generate(false)}
+            disabled={genPending}
+            className="flex-1 rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-black transition hover:opacity-90 disabled:opacity-50"
+          >
             Final · {finalCost} cr
           </button>
         </div>
         <p className="text-[11px] text-[var(--color-muted)]">
-          Generation is wired to the model adapters; dispatch activates with the
-          orchestrator. Costs are live estimates (±10%).
+          Spends from your credit wallet; failures auto-refund. Costs are live
+          estimates (±10%).
         </p>
+        {genNote && <p className="text-xs text-emerald-400">{genNote}</p>}
+        {genError && <p className="text-xs text-red-400">{genError}</p>}
+
+        {/* Takes strip (A/B/C lineage) */}
+        {shot.takes.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+              Takes
+            </h4>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {shot.takes.map((t) => (
+                <div key={t.id} className="shrink-0">
+                  <div className="h-14 w-24 overflow-hidden rounded border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+                    {t.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={t.url}
+                        alt="take"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-[10px] text-[var(--color-muted)]">
+                        {t.state}
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[10px] text-[var(--color-muted)]">
+                    {t.isDraft ? "draft" : "final"} · {t.creditCost}cr
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button
           onClick={save}

@@ -24,30 +24,29 @@ export async function replaceScreenplay(
 ) {
   await assertProjectOwned(ownerId, projectId);
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(projects)
-      .set({
-        title: generated.title,
-        logline: generated.logline,
-        styleHeader: generated.styleHeader,
-        updatedAt: sql`now()`,
-      })
-      .where(eq(projects.id, projectId));
+  // The Neon HTTP driver has no interactive transactions; run sequentially.
+  await db
+    .update(projects)
+    .set({
+      title: generated.title,
+      logline: generated.logline,
+      styleHeader: generated.styleHeader,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(projects.id, projectId));
 
-    await tx.delete(scenes).where(eq(scenes.projectId, projectId));
+  await db.delete(scenes).where(eq(scenes.projectId, projectId));
 
-    if (generated.scenes.length > 0) {
-      await tx.insert(scenes).values(
-        generated.scenes.map((s, i) => ({
-          projectId,
-          index: i,
-          heading: s.heading,
-          body: s.body,
-        })),
-      );
-    }
-  });
+  if (generated.scenes.length > 0) {
+    await db.insert(scenes).values(
+      generated.scenes.map((s, i) => ({
+        projectId,
+        index: i,
+        heading: s.heading,
+        body: s.body,
+      })),
+    );
+  }
 }
 
 /**

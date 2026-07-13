@@ -66,11 +66,18 @@ src/
 - ✅ Neon/Drizzle schema for the full project graph (projects, scenes, entities,
   outfits, shots, prompt versions, immutable takes, media assets, credit ledger)
 - ✅ Ledger-first credit wallet with grant / topup / spend / auto-refund and
-  idempotent Stripe top-ups
+  idempotent Stripe top-ups (atomic guarded updates — no interactive txns)
 - ✅ Swappable storage (Cloudinary / Synology) with signed-URL support
-- ✅ Model adapter interface + registry (Higgsfield adapter skeleton)
-- ✅ Studio shell: projects dashboard + five-view project navigation with a live
-  Script view reading real graph data
+- ✅ Model adapter interface + registry (Higgsfield skeleton + mock renderer)
+- ✅ Studio shell: projects dashboard + five-view project navigation
+- ✅ **Prompt compiler** (§6.2): ShotDesign + entities + style header → IR →
+  per-model grammar (generic / Veo / Seedance / Kling) with linting
+- ✅ **Director Layer Frame view** (§7.2): interactive shot designer with a live
+  compiled-prompt panel and live cost badges
+- ✅ **AI co-writer & auto-breakdown** (Module 1) via Claude structured outputs
+- ✅ **Generation lifecycle** (§6.1/§6.7/§24.2): design → compile → spend credits
+  → immutable Take → dispatch/poll adapter → render, with auto-refund on failure
+  (driven by a mock adapter until a provider key is set)
 
 ## Roadmap (per PRD §11)
 

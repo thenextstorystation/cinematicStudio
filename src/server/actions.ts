@@ -12,7 +12,9 @@ import {
   getScriptText,
 } from "./screenplay";
 import { generateScreenplay, breakdownScreenplay } from "@/lib/ai/cowriter";
+import { generateShot } from "./generation";
 import type { ShotDesign } from "@/db/schema";
+import type { TargetModel } from "@/lib/compiler";
 
 const createProjectSchema = z.object({
   title: z.string().min(1).max(120),
@@ -124,5 +126,32 @@ export async function breakdownScriptAction(projectId: string) {
   const result = await applyBreakdown(user.id, projectId, breakdown);
   revalidatePath(`/dashboard/projects/${projectId}`);
   revalidatePath(`/dashboard/projects/${projectId}/design`);
+  return result;
+}
+
+// --- Generation lifecycle (Module 6 core) ----------------------------------
+
+const generateSchema = z.object({
+  projectId: z.string().uuid(),
+  shotId: z.string().uuid(),
+  isDraft: z.boolean(),
+  targetModel: z.enum(["generic", "veo", "seedance", "kling"]).optional(),
+});
+
+export async function generateShotAction(input: {
+  projectId: string;
+  shotId: string;
+  isDraft: boolean;
+  targetModel?: TargetModel;
+}) {
+  const user = await requireUser();
+  const parsed = generateSchema.parse(input);
+  const result = await generateShot(user.id, user.id, {
+    shotId: parsed.shotId,
+    isDraft: parsed.isDraft,
+    targetModel: parsed.targetModel,
+  });
+  revalidatePath(`/dashboard/projects/${parsed.projectId}/design`);
+  revalidatePath("/dashboard");
   return result;
 }

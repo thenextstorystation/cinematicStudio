@@ -1,12 +1,17 @@
 import type { ModelAdapter, ModelCapability } from "./adapter";
 import { HiggsfieldAdapter } from "./higgsfield";
+import { MockAdapter } from "./mock";
 
 /**
  * Model registry. The generation engine routes each shot to a registered
  * adapter (PRD §6.1 multi-model routing). Launch target: ≥2 video + 2 image
  * adapters. Register additional providers here — nothing else changes.
+ *
+ * The MockAdapter is the default generation target until a provider key is
+ * configured; it lets the full lifecycle run without spending real money.
  */
 const adapters: ModelAdapter[] = [
+  new MockAdapter(),
   new HiggsfieldAdapter("seedance-2", ["text-to-video", "image-to-video"]),
   new HiggsfieldAdapter("soul-image", ["text-to-image"]),
   new HiggsfieldAdapter("upscaler", ["upscale"]),
