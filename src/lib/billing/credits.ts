@@ -5,9 +5,12 @@ import { creditLedger, users } from "@/db/schema";
 /**
  * Ledger-first credit engine (PRD §6.7, §24).
  *
- * Every movement appends a row to `credit_ledger` and updates the cached
- * balance on `users` atomically. Spends are validated against the current
- * balance; failed generations get auto-refunded (PRD §24.2).
+ * Every movement appends a row to `credit_ledger` and moves the cached balance
+ * on `users`. The balance mutation is a single guarded `UPDATE … RETURNING`
+ * statement — atomic at the row level and safe on the Neon serverless HTTP
+ * driver, which does not support interactive transactions. A spend that would
+ * overdraw matches no row and is rejected. Failed generations are auto-refunded
+ * (PRD §24.2).
  */
 
 export class InsufficientCreditsError extends Error {
@@ -41,40 +44,49 @@ async function applyDelta(params: {
     allowNegative = false,
   } = params;
 
-  return db.transaction(async (tx) => {
-    const [user] = await tx
+  // Guarded atomic mutation: only apply if the resulting balance stays >= 0
+  // (unless negatives are explicitly allowed). No row updated ⇒ short balance.
+  const guard =
+    allowNegative || delta >= 0
+      ? eq(users.id, userId)
+      : and(
+          eq(users.id, userId),
+          sql`${users.creditBalance} + ${delta} >= 0`,
+        );
+
+  const [updated] = await db
+    .update(users)
+    .set({
+      creditBalance: sql`${users.creditBalance} + ${delta}`,
+      updatedAt: sql`now()`,
+    })
+    .where(guard)
+    .returning({ balance: users.creditBalance });
+
+  if (!updated) {
+    const [current] = await db
       .select({ balance: users.creditBalance })
       .from(users)
-      .where(eq(users.id, userId))
-      .for("update");
-
-    if (!user) throw new Error(`Unknown user ${userId}`);
-
-    const next = user.balance + delta;
-    if (next < 0 && !allowNegative) {
-      throw new InsufficientCreditsError(-delta, user.balance);
-    }
-
-    await tx
-      .update(users)
-      .set({ creditBalance: next, updatedAt: sql`now()` })
       .where(eq(users.id, userId));
+    if (!current) throw new Error(`Unknown user ${userId}`);
+    // Row exists but the guard failed ⇒ insufficient balance for this spend.
+    throw new InsufficientCreditsError(-delta, current.balance);
+  }
 
-    const [entry] = await tx
-      .insert(creditLedger)
-      .values({
-        userId,
-        reason,
-        amount: delta,
-        balanceAfter: next,
-        referenceType,
-        referenceId,
-        metadata,
-      })
-      .returning();
+  const [entry] = await db
+    .insert(creditLedger)
+    .values({
+      userId,
+      reason,
+      amount: delta,
+      balanceAfter: updated.balance,
+      referenceType,
+      referenceId,
+      metadata,
+    })
+    .returning();
 
-    return { balance: next, entry };
-  });
+  return { balance: updated.balance, entry };
 }
 
 /** Grant subscription/signup credits. */

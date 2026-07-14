@@ -9,6 +9,7 @@ const VIEWS = [
   { slug: "design", label: "Design" },
   { slug: "canvas", label: "Canvas" },
   { slug: "edit", label: "Edit" },
+  { slug: "assistant", label: "Assistant" },
 ];
 
 export default async function ProjectLayout({

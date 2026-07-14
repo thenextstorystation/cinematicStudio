@@ -26,6 +26,18 @@ npm run db:migrate           # apply the schema to your Neon database
 npm run dev                  # http://localhost:3000
 ```
 
+### Checks
+
+```bash
+npm run typecheck   # tsc --noEmit
+npm test            # unit tests for the pure logic (compiler, cost, exports, continuity)
+npm run build       # production build
+```
+
+CI (`.github/workflows/ci.yml`) runs typecheck, tests, and a build on every push
+and PR. The unit tests run on Node's built-in test runner with no extra
+dependencies (type-stripped `.mts` files under `tests/`).
+
 ### Required services
 
 1. **Neon** — create a project, copy the pooled connection string into `DATABASE_URL`.
@@ -66,11 +78,32 @@ src/
 - ✅ Neon/Drizzle schema for the full project graph (projects, scenes, entities,
   outfits, shots, prompt versions, immutable takes, media assets, credit ledger)
 - ✅ Ledger-first credit wallet with grant / topup / spend / auto-refund and
-  idempotent Stripe top-ups
+  idempotent Stripe top-ups (atomic guarded updates — no interactive txns)
 - ✅ Swappable storage (Cloudinary / Synology) with signed-URL support
-- ✅ Model adapter interface + registry (Higgsfield adapter skeleton)
-- ✅ Studio shell: projects dashboard + five-view project navigation with a live
-  Script view reading real graph data
+- ✅ Model adapter interface + registry (Higgsfield skeleton + mock renderer)
+- ✅ Studio shell: projects dashboard + five-view project navigation
+- ✅ **Prompt compiler** (§6.2): ShotDesign + entities + style header → IR →
+  per-model grammar (generic / Veo / Seedance / Kling) with linting
+- ✅ **Director Layer Frame view** (§7.2): interactive shot designer with a live
+  compiled-prompt panel and live cost badges
+- ✅ **AI co-writer & auto-breakdown** (Module 1) via Claude structured outputs
+- ✅ **Generation lifecycle** (§6.1/§6.7/§24.2): design → compile → spend credits
+  → immutable Take → dispatch/poll adapter → render, with auto-refund on failure
+  (driven by a mock adapter until a provider key is set)
+- ✅ **Edit & handoff** (§12.5/§17.1): auto-assembled sequence from rendered
+  takes, budget/runtime summary, shot-list table, and downloadable exports —
+  FCPXML, OTIO, EDL (CMX3600), shot-list CSV, and full project JSON
+- ✅ **Billing** (§24.1): credit-pack purchase via Stripe Checkout (inline
+  pricing, JIT customer), success/cancel handling, and an in-app credit ledger;
+  the webhook credits the wallet idempotently on payment
+- ✅ **Continuity engine** (§6.5/§2.2): post-render identity consistency score on
+  every take (pluggable scorer — heuristic default, swap in embedding/VLM), plus
+  a project audit that flags shots below threshold (<70) with one-click re-roll
+- ✅ **Director's Assistant** (§11.1): read-only project-aware chat grounded in a
+  live digest of the whole graph (scenes, shots, budget, continuity);
+  injection-hardened (§11.6) — project content is treated as data, not commands
+- ✅ **Queue** (§22.1): cross-project generation-job panel with status, model,
+  tier, cost, consistency score, and thumbnails
 
 ## Roadmap (per PRD §11)
 
